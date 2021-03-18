@@ -32,9 +32,13 @@ namespace Microsoft.Health.Fhir.Liquid.Converter.Tool
             var dataProcessor = CreateDataProcessor(dataType);
             var templateProvider = CreateTemplateProvider(dataType, options.TemplateDirectory);
 
-            if (!string.IsNullOrEmpty(options.InputDataContent))
+            if (!string.IsNullOrEmpty(options.InputDataFile))
             {
-                ConvertSingleFile(dataProcessor, templateProvider, dataType, options.RootTemplate, options.InputDataContent, options.OutputDataFile, options.IsTraceInfo);
+                ConvertSingleFile(dataProcessor, templateProvider, dataType, options.RootTemplate, options.InputDataFile, options.OutputDataFile, options.IsTraceInfo);
+            }
+            else if (!string.IsNullOrEmpty(options.InputDataContent))
+            {
+                ConvertContent(dataProcessor, templateProvider, dataType, options.RootTemplate, options.InputDataContent, options.OutputDataFile, options.IsTraceInfo);
             }
             else
             {
@@ -44,7 +48,13 @@ namespace Microsoft.Health.Fhir.Liquid.Converter.Tool
             Console.WriteLine($"Conversion completed!");
         }
 
-        private static void ConvertSingleFile(IFhirConverter dataProcessor, ITemplateProvider templateProvider, DataType dataType, string rootTemplate, string inputContent, string outputFile, bool isTraceInfo)
+        private static void ConvertSingleFile(IFhirConverter dataProcessor, ITemplateProvider templateProvider, DataType dataType, string rootTemplate, string inputFile, string outputFile, bool isTraceInfo)
+        {
+            var fileContent = File.ReadAllText(inputFile);
+            ConvertContent(dataProcessor, templateProvider, dataType, rootTemplate, fileContent, outputFile, isTraceInfo);
+        }
+
+        private static void ConvertContent(IFhirConverter dataProcessor, ITemplateProvider templateProvider, DataType dataType, string rootTemplate, string inputContent, string outputFile, bool isTraceInfo)
         {
             var traceInfo = CreateTraceInfo(dataType, isTraceInfo);
             var resultString = dataProcessor.Convert(inputContent, rootTemplate, templateProvider, traceInfo);
@@ -58,10 +68,9 @@ namespace Microsoft.Health.Fhir.Liquid.Converter.Tool
             foreach (var file in files)
             {
                 Console.WriteLine($"Processing {Path.GetFullPath(file)}");
-                var fileContent = File.ReadAllText(file);
                 var outputFileDirectory = Path.Join(outputFolder, Path.GetRelativePath(inputFolder, Path.GetDirectoryName(file)));
                 var outputFilePath = Path.Join(outputFileDirectory, Path.GetFileNameWithoutExtension(file) + ".json");
-                ConvertSingleFile(dataProcessor, templateProvider, dataType, rootTemplate, fileContent, outputFilePath, isTraceInfo);
+                ConvertSingleFile(dataProcessor, templateProvider, dataType, rootTemplate, file, outputFilePath, isTraceInfo);
             }
         }
 
@@ -140,6 +149,7 @@ namespace Microsoft.Health.Fhir.Liquid.Converter.Tool
         private static bool IsValidOptions(ConverterOptions options)
         {
             var contentToFile = !string.IsNullOrEmpty(options.InputDataContent) &&
+                string.IsNullOrEmpty(options.InputDataFile) &&
                 !string.IsNullOrEmpty(options.OutputDataFile) &&
                 string.IsNullOrEmpty(options.InputDataFolder) &&
                 string.IsNullOrEmpty(options.OutputDataFolder);
@@ -150,7 +160,14 @@ namespace Microsoft.Health.Fhir.Liquid.Converter.Tool
                 !string.IsNullOrEmpty(options.OutputDataFolder) &&
                 !IsSameDirectory(options.InputDataFolder, options.OutputDataFolder);
 
-            return contentToFile || folderToFolder;
+            var fileToFile = !string.IsNullOrEmpty(options.InputDataFile) &&
+                string.IsNullOrEmpty(options.InputDataContent) &&
+                !string.IsNullOrEmpty(options.OutputDataFile) &&
+                string.IsNullOrEmpty(options.InputDataFolder) &&
+                string.IsNullOrEmpty(options.OutputDataFolder);
+
+            var exclusiveOr = new[] {contentToFile, folderToFolder, fileToFile}.Count(x => x) == 1;
+            return exclusiveOr;
         }
 
         private static bool IsSameDirectory(string inputFolder, string outputFolder)

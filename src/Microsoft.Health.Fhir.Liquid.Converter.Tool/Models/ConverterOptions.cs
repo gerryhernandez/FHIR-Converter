@@ -16,8 +16,11 @@ namespace Microsoft.Health.Fhir.Liquid.Converter.Tool.Models
         [Option('r', "RootTemplate", Required = true, HelpText = "Name of root template")]
         public string RootTemplate { get; set; }
 
-        [Option('c', "InputDataContent", Required = false, HelpText = "Input data content. Please specify OutputDataFile to get the results.")]
+        [Option('c', "InputDataContent", Required = false, HelpText = "Input data content. Please specify OutputDataFile to get the results. Cannot be combined with InputDataFile.")]
         public string InputDataContent { get; set; }
+
+        [Option('j', "InputDataFile", Required = false, HelpText = "Input data file to read content from. Please specify OutputDataFile to get the results. Cannot be combined with InputDataContent.")]
+        public string InputDataFile { get; set; }
 
         [Option('f', "OutputDataFile", Required = false, HelpText = "Output data file")]
         public string OutputDataFile { get; set; }
